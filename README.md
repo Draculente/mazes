@@ -1,0 +1,1 @@
+Image by https://github.com/luciekle/KI-PA-08/blob/master/lageplan.png.
