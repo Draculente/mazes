@@ -34,6 +34,12 @@ fn get_maze() -> anyhow::Result<()> {
 
     println!("{map}");
 
+    let path: Option<PathBuf> = prompt_opt("Enter the path where to save the map as png")?;
+
+    map.to_image()
+        .ok_or(anyhow!("Failed to create image"))?
+        .save(path.ok_or(anyhow!("Please specify a path"))?)?;
+
     Ok(())
 }
 

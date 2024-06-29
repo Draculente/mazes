@@ -1,9 +1,12 @@
 use std::{cell, fmt::Display};
 
-use image::{DynamicImage, Rgba};
+use image::{DynamicImage, ImageBuffer, Rgba, RgbaImage};
 use itertools::Itertools;
 
 use crate::maze_generation::{Cell, MazeMap, Wall};
+
+const IMAGE_BORDER_WIDTH: usize = 3;
+const IMAGE_BLOCK_WIDTH: usize = 20;
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 enum BlockType {
@@ -30,6 +33,18 @@ impl BlockType {
             (0, 255, 0) => BlockType::Green,
             (0, 0, 255) => BlockType::Blue,
             _ => BlockType::Border,
+        }
+    }
+
+    fn to_rgba(&self) -> [u8; 4] {
+        match self {
+            BlockType::White => [255, 255, 255, 0],
+            BlockType::Black => [0, 0, 0, 255],
+            BlockType::Orange => [200, 113, 55, 255],
+            BlockType::Blue => [0, 0, 255, 255],
+            BlockType::Green => [0, 255, 0, 255],
+            BlockType::Yellow => [255, 255, 0, 255],
+            BlockType::Border => [255, 0, 0, 255],
         }
     }
 
@@ -172,6 +187,48 @@ impl Map {
         }
         res
     }
+
+    pub fn to_image(self) -> Option<RgbaImage> {
+        let image_width: u32 = self.width as u32 * IMAGE_BLOCK_WIDTH as u32
+            + (self.width as u32 - 1) * IMAGE_BORDER_WIDTH as u32;
+        let image_height: u32 = self.height as u32 * IMAGE_BLOCK_WIDTH as u32
+            + (self.height as u32 - 1) * IMAGE_BORDER_WIDTH as u32;
+        let border_rows = (0..IMAGE_BORDER_WIDTH)
+            .map(|_| (0..image_width).map(|_| BlockType::Border).collect_vec())
+            .collect_vec();
+        let buffer_vec = self
+            .blocks
+            .into_iter()
+            .map(|block_row| block_row.iter().map(|block| block.block_type).collect_vec())
+            .map(|block_row| expand_block_row(&block_row))
+            .intersperse(border_rows)
+            .flatten()
+            .flatten()
+            .map(|block_type| block_type.to_rgba())
+            .flatten()
+            .collect_vec();
+
+        RgbaImage::from_vec(image_width, image_height, buffer_vec)
+    }
+}
+
+fn expand_block_row(block_row: &Vec<BlockType>) -> Vec<Vec<BlockType>> {
+    let expanded_row = block_row
+        .into_iter()
+        .intersperse(&BlockType::Border)
+        .flat_map(|block_type| {
+            if block_type.is_border() {
+                0..IMAGE_BORDER_WIDTH
+            } else {
+                0..IMAGE_BLOCK_WIDTH
+            }
+            .map(|_| block_type.clone())
+        })
+        .collect_vec();
+
+    (0..IMAGE_BLOCK_WIDTH)
+        .map(|_| expanded_row.clone())
+        .collect_vec()
 }
 
 impl Display for Map {
@@ -227,7 +284,7 @@ impl From<MazeMap> for Map {
         );
         Self {
             width: value.width * 2 + 1,
-            height: value.height * 2,
+            height: value.height * 2 + 1,
             blocks: block_rows,
         }
     }
