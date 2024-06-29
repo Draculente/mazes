@@ -17,8 +17,8 @@ enum BlockType {
 impl BlockType {
     fn from_rgba(rgba: &Rgba<u8>) -> Self {
         let red = *rgba.0.first().expect("Rgba needs to have red");
-        let green = *rgba.0.first().expect("Rgba needs to have green");
-        let blue = *rgba.0.first().expect("Rgba needs to have blue");
+        let green = *rgba.0.get(1).expect("Rgba needs to have green");
+        let blue = *rgba.0.get(2).expect("Rgba needs to have blue");
 
         match (red, green, blue) {
             (0, 0, 0) => BlockType::Black,
@@ -95,7 +95,7 @@ pub struct Map {
 impl Map {
     pub fn new(blocks: Vec<Vec<Block>>) -> Self {
         let width = blocks
-            .first()
+            .get(0)
             .expect("A map must at least have a height of 1")
             .len();
         let height = blocks.len();
@@ -218,12 +218,6 @@ fn get_blocks_from_pixel_row(block_row_y: usize, pixel_row: &Vec<&mut Rgba<u8>>)
                 .expect("Each block must have at least a width of 3 pixels")
         })
         .enumerate()
-        .map(|(block_x, rgba)| {
-            Block::new(
-                block_x,
-                block_row_y,
-                BlockType::from_rgba(rgba),
-            )
-        })
+        .map(|(block_x, rgba)| Block::new(block_x, block_row_y, BlockType::from_rgba(rgba)))
         .collect_vec()
 }
