@@ -143,9 +143,19 @@ impl Map {
             .collect_vec()
     }
 
-    pub fn to_string_with_location(&self, location: Option<Block>) -> String {
+    pub fn to_string_with_location(&self, location: Option<Block>, with_numbers: bool) -> String {
         let mut res = "".to_string();
-        for row in &self.blocks {
+        if with_numbers {
+            res += "  ";
+            for i in 0..self.width {
+                res += &format!("{:>2}", i);
+            }
+            res += "\n";
+        }
+        for (i, row) in self.blocks.iter().enumerate() {
+            if with_numbers {
+                res += &format!("{:>2}", i);
+            }
             for block in row {
                 if let Some(inserted_block) = location {
                     if block.x == inserted_block.x && block.y == inserted_block.y {
@@ -163,7 +173,7 @@ impl Map {
 
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_string_with_location(None))?;
+        f.write_str(&self.to_string_with_location(None, true))?;
         Ok(())
     }
 }

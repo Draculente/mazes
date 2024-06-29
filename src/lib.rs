@@ -20,7 +20,7 @@ impl State {
     }
 
     pub fn display_on_map(&self, map: &Map) -> String {
-        map.to_string_with_location(Some(self.location))
+        map.to_string_with_location(Some(self.location), false)
     }
 }
 
@@ -65,30 +65,22 @@ impl Node {
 
 pub fn a_star(
     map: &Map,
-    start_x: usize,
-    start_y: usize,
-    destination_x: usize,
-    destination_y: usize,
+    start_block: Block,
+    destination_block: Block,
 ) -> anyhow::Result<Vec<State>> {
-    let start_block = map
-        .get_block(start_x, start_y)
-        .ok_or(anyhow!("Starting block not found"))?;
-    let destination = map
-        .get_block(destination_x, destination_y)
-        .ok_or(anyhow!("Destination block not found"))?;
     let first_state = State::new(start_block);
     let first_node = Arc::new(Node::new(first_state, None, 0));
 
     let mut frontier: PriorityQueue<Arc<Node>, Reverse<u32>> = PriorityQueue::new();
     let mut reached: HashMap<State, Arc<Node>> = HashMap::new();
 
-    let f = first_node.f(destination);
+    let f = first_node.f(destination_block);
 
     frontier.push(first_node, Reverse(f));
 
     while !frontier.is_empty() {
         let (node, _) = frontier.pop().ok_or(anyhow!("Frontier is empty"))?;
-        if node.state.location == destination {
+        if node.state.location == destination_block {
             return Ok(node.get_steps());
         }
         for action in map.get_reachable(node.state.location.x, node.state.location.y) {
@@ -100,12 +92,12 @@ pub fn a_star(
             ));
             if !reached.contains_key(&new_state) {
                 reached.insert(new_state, child.clone());
-                frontier.push(child.clone(), Reverse(child.f(destination)));
+                frontier.push(child.clone(), Reverse(child.f(destination_block)));
             } else if child.cost < reached[&child.state].cost {
                 // Remove old (worse) node
                 frontier.remove(&reached[&child.state]);
                 reached.insert(child.state, child.clone());
-                frontier.push(child.clone(), Reverse(child.f(destination)));
+                frontier.push(child.clone(), Reverse(child.f(destination_block)));
             }
         }
     }
