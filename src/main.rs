@@ -1,7 +1,8 @@
-use std::{fs::File, io::Write, num::ParseIntError, path::PathBuf};
+use std::{env, fs::File, io::Write, num::ParseIntError, path::PathBuf};
 
 use anyhow::anyhow;
-use image_a_star::{a_star, Block, Map};
+use image_a_star::{a_star, generate_maze, Block, Map};
+use itertools::Itertools;
 use promptly::{prompt, prompt_opt};
 
 fn main() {
@@ -11,6 +12,32 @@ fn main() {
 }
 
 fn run() -> anyhow::Result<()> {
+    let args: Vec<String> = env::args().collect_vec();
+
+    if args.contains(&"solve".to_owned()) {
+        find_path()
+    } else if args.contains(&"gen".to_owned()) {
+        get_maze()
+    } else {
+        Err(anyhow!(
+            "Please specify a command as argument. The available commands are: 'solve' and 'gen'."
+        ))
+    }
+}
+
+fn get_maze() -> anyhow::Result<()> {
+    let width: usize = prompt("Specify the width of the maze")?;
+    let height: usize = prompt("Specify the height of the maze")?;
+
+    let maze_map = generate_maze(width / 2, height / 2)?;
+    let map = Map::from(maze_map);
+
+    println!("{map}");
+
+    Ok(())
+}
+
+fn find_path() -> anyhow::Result<()> {
     let path: Option<PathBuf> = prompt_opt("Enter the path to the map as png")?;
 
     let img = image::open(path.ok_or(anyhow!("Please specify a path"))?)

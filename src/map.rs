@@ -1,7 +1,9 @@
-use std::fmt::Display;
+use std::{cell, fmt::Display};
 
 use image::{DynamicImage, Rgba};
 use itertools::Itertools;
+
+use crate::maze_generation::{Cell, MazeMap, Wall};
 
 #[derive(PartialEq, Eq, PartialOrd, Ord, Clone, Copy, Debug, Hash)]
 enum BlockType {
@@ -67,6 +69,7 @@ impl Block {
         !(self.block_type == BlockType::Black || self.block_type == BlockType::White)
     }
 
+    /// The smaller the better!!!
     pub fn speed(&self) -> usize {
         match self.block_type {
             BlockType::White => usize::MAX,
@@ -208,6 +211,99 @@ impl From<DynamicImage> for Map {
 
         Map::new(blocks)
     }
+}
+
+impl From<MazeMap> for Map {
+    fn from(value: MazeMap) -> Self {
+        let mut block_rows = value
+            .cells
+            .into_iter()
+            .flat_map(|cell_row| expand_cell_row(&cell_row))
+            .collect_vec();
+        block_rows.push(
+            (0..(value.width * 2 + 1))
+                .map(|i| Block::new(i, value.height, BlockType::Black))
+                .collect_vec(),
+        );
+        Self {
+            width: value.width * 2 + 1,
+            height: value.height * 2,
+            blocks: block_rows,
+        }
+    }
+}
+
+// Each cell row can be expanded in 3 block rows. One of those is shared between two cell_rows.
+// Therefore each cell row gets expanded into two block_row: The top and the middle block row.
+fn expand_cell_row(cell_row: &Vec<Cell>) -> Vec<Vec<Block>> {
+    let mut block_rows = vec![];
+    block_rows.push(get_top_block_row_of_cell_row(cell_row));
+    block_rows.push(get_middle_block_row_of_cell_row(cell_row));
+    block_rows
+}
+
+fn get_top_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
+    let mut block_row = vec![];
+
+    let y = cell_row
+        .first()
+        .expect("The MazeMap must at least have a width of 1")
+        .y
+        * 2
+        + 0;
+
+    for cell in cell_row {
+        // Top left block is always black
+        block_row.push(Block::new(cell.x * 2 + 0, y, BlockType::Black));
+        let block_type = if cell.top == Wall::Open {
+            BlockType::Orange
+        } else {
+            BlockType::Black
+        };
+        block_row.push(Block::new(cell.x * 2 + 1, y, block_type));
+    }
+
+    block_row.push(Block::new(cell_row.len(), y, BlockType::Black));
+
+    block_row
+}
+
+fn get_middle_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
+    let mut block_row = vec![];
+
+    let y = cell_row
+        .first()
+        .expect("The MazeMap must at least have a width of 1")
+        .y
+        * 2
+        + 1;
+
+    for cell in cell_row {
+        let block_type = if cell.left == Wall::Open {
+            BlockType::Orange
+        } else {
+            BlockType::Black
+        };
+
+        block_row.push(Block::new(cell.x * 2 + 0, y, block_type));
+
+        block_row.push(Block::new(cell.x * 2 + 1, y, BlockType::Orange));
+    }
+
+    let block_type = if cell_row
+        .last()
+        .expect("The MazeMap must at least have a width of 1")
+        .right
+        == Wall::Open
+    {
+        BlockType::Orange
+    } else {
+        BlockType::Black
+    };
+
+    block_row.push(Block::new(cell_row.len(), y, block_type));
+
+    block_row
 }
 
 fn is_border_row(row: &Vec<&mut Rgba<u8>>) -> bool {

@@ -1,4 +1,5 @@
 mod map;
+mod maze_generation;
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
@@ -7,6 +8,7 @@ use std::sync::Arc;
 use anyhow::anyhow;
 pub use map::Block;
 pub use map::Map;
+pub use maze_generation::generate_maze;
 use priority_queue::PriorityQueue;
 
 #[derive(Debug, PartialEq, Eq, Hash, Clone, Copy)]

@@ -399,6 +399,7 @@ dependencies = [
  "itertools 0.13.0",
  "priority-queue",
  "promptly",
+ "rand",
 ]
 
 [[package]]
