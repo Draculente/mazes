@@ -97,8 +97,8 @@ impl Map {
         let width = blocks
             .first()
             .expect("A map must at least have a height of 1")
-            .len() as usize;
-        let height = blocks.len() as usize;
+            .len();
+        let height = blocks.len();
 
         Self {
             width,
@@ -125,11 +125,11 @@ impl Map {
             reachable_blocks.push(self.get_block(x, y - 1));
         }
         // To the right
-        if x + 1 <= self.width {
+        if x < self.width {
             reachable_blocks.push(self.get_block(x + 1, y));
         }
         // To the bottom
-        if y + 1 <= self.height {
+        if y < self.height {
             reachable_blocks.push(self.get_block(x, y + 1));
         }
 
@@ -220,8 +220,8 @@ fn get_blocks_from_pixel_row(block_row_y: usize, pixel_row: &Vec<&mut Rgba<u8>>)
         .enumerate()
         .map(|(block_x, rgba)| {
             Block::new(
-                block_x as usize,
-                block_row_y as usize,
+                block_x,
+                block_row_y,
                 BlockType::from_rgba(rgba),
             )
         })

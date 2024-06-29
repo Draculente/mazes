@@ -44,10 +44,10 @@ impl Node {
         let mut solution: Vec<State> = Vec::new();
         let mut node = self;
         while let Some(parent) = &node.parent {
-            solution.push((node.state).clone());
+            solution.push(node.state);
             node = parent;
         }
-        solution.push((node.state).clone());
+        solution.push(node.state);
         solution.reverse();
         solution
     }
@@ -104,7 +104,7 @@ pub fn a_star(
             } else if child.cost < reached[&child.state].cost {
                 // Remove old (worse) node
                 frontier.remove(&reached[&child.state]);
-                reached.insert(child.state.clone(), child.clone());
+                reached.insert(child.state, child.clone());
                 frontier.push(child.clone(), Reverse(child.f(destination)));
             }
         }
