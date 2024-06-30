@@ -6,6 +6,9 @@ use rand::{
 
 use anyhow::{anyhow, Ok};
 
+/// The entered loop_prop is divided by this factor, to create a behavior in which 1 is almost total connection and 0 is no loops.
+const LOOP_PROB_FACTOR: f64 = 6.20;
+
 #[derive(Debug, Clone, Copy, PartialEq, PartialOrd, Eq)]
 pub enum Wall {
     Open,
@@ -195,7 +198,15 @@ pub fn generate_maze(
         let unvisited_neighbors: Vec<Cell> = map
             .get_neighbors(&current_cell)
             .into_iter()
-            .filter(|cell| !visited.contains(cell) || rng.gen_bool(loop_prob.unwrap_or(0.0)))
+            .filter(|cell| {
+                !visited.contains(cell)
+                    || rng.gen_bool(
+                        loop_prob
+                            .filter(|f| *f != 0.0)
+                            .map(|f| f / LOOP_PROB_FACTOR)
+                            .unwrap_or(0.0),
+                    )
+            })
             .collect();
 
         if !unvisited_neighbors.is_empty() {

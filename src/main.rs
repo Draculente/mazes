@@ -106,13 +106,19 @@ fn gen(args: &GenArgs) -> anyhow::Result<()> {
         .ok_or("No width arg specified")
         .or_else(|_| prompt("Specify the height of the maze"))?;
 
-    let loop_prop: Option<f64> = if let Some(l) = args.loop_prob {
+    let loop_prob: Option<f64> = if let Some(l) = args.loop_prob {
         Some(l)
     } else {
         prompt_opt("Specify the probability for loops as f64 between 0 and 1 (0)")?
     };
 
-    let maze_map = generate_maze(width / 2, height / 2, loop_prop)?;
+    let loop_prob = loop_prob.unwrap_or(0.0);
+
+    if loop_prob >= 1.0 || loop_prob < 0.0 {
+        return Err(anyhow!("Please specify a loop probability between 0 and 1"));
+    }
+
+    let maze_map = generate_maze(width / 2, height / 2, Some(loop_prob))?;
     let map = Map::from(maze_map);
 
     println!("{map}");
