@@ -15,7 +15,9 @@ struct Cli {
 
 #[derive(Subcommand)]
 enum Commands {
+    /// Solve a maze given as a png file
     Solve(SolveArgs),
+    /// Generate a maze and optionally save it as a png file
     Gen(GenArgs),
 }
 
