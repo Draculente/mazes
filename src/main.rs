@@ -42,6 +42,9 @@ struct SolveArgs {
     /// The path where to store the solution as png
     #[arg(long)]
     png: Option<PathBuf>,
+    /// If present the solution is printed step by step
+    #[arg[long, default_value = "false"]]
+    verbose_solution: bool,
 }
 
 fn between_0_1(s: &str) -> Result<f64, String> {
@@ -80,15 +83,6 @@ fn main() {
 }
 
 fn run(cli: &Cli) -> anyhow::Result<()> {
-    // if args.contains(&"solve".to_owned()) {
-    //     find_path()
-    // } else if args.contains(&"gen".to_owned()) {
-    //     get_maze()
-    // } else {
-    //     Err(anyhow!(
-    //         "Please specify a command as argument. The available commands are: 'solve' and 'gen'."
-    //     ))
-    // }
     match &cli.command {
         Commands::Solve(solve_args) => solve(&solve_args),
         Commands::Gen(gen_args) => gen(&gen_args),
@@ -106,11 +100,13 @@ fn gen(args: &GenArgs) -> anyhow::Result<()> {
         .ok_or("No width arg specified")
         .or_else(|_| prompt("Specify the height of the maze"))?;
 
-    let loop_prob: Option<f64> = if let Some(l) = args.loop_prob {
-        Some(l)
-    } else {
-        prompt_opt("Specify the probability for loops as f64 between 0 and 1 (0)")?
-    };
+    let loop_prob: Option<f64> = args.loop_prob;
+
+    // if let Some(l) = args.loop_prob {
+    //     Some(l)
+    // } else {
+    //     prompt_opt("Specify the probability for loops as f64 between 0 and 1 (0)")?
+    // };
 
     let loop_prob = loop_prob.unwrap_or(0.0);
 
@@ -176,18 +172,23 @@ fn solve(args: &SolveArgs) -> anyhow::Result<()> {
         let solution_seq = solution.as_sequence_of_maps(&map);
         let solution_str = solution.to_string();
 
-        for state in solution_seq {
-            file.write_all(format!("{}\n", state).as_bytes())?;
-            println!("{}", state);
+        if args.verbose_solution || args.txt.is_some() {
+            for state in solution_seq {
+                if args.txt.is_some() {
+                    file.write_all(format!("{}\n", state).as_bytes())?;
+                }
+                if args.verbose_solution {
+                    println!("{}", state);
+                }
+            }
         }
 
-        file.write_all(format!("{}\n", solution_str).as_bytes())?;
+        if args.txt.is_some() {
+            file.write_all(format!("{}\n", solution_str).as_bytes())?;
+        }
         println!("{solution_str}");
 
-        let should_be_saved_as_png: bool =
-            args.png.is_some() || prompt("Do you want to save this solution as png?")?;
-
-        if should_be_saved_as_png {
+        if args.png.is_some() {
             let path: PathBuf = args
                 .png
                 .as_ref()
