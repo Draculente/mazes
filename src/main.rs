@@ -2,7 +2,7 @@ use std::{fs::File, io::Write, num::ParseIntError, path::PathBuf};
 
 use anyhow::anyhow;
 use clap::{Args, Parser, Subcommand};
-use image_a_star::{a_star, generate_maze, Block, Map};
+use mazes::{a_star, generate_maze, Block, Map};
 use promptly::{prompt, prompt_opt};
 
 #[derive(Parser)]
