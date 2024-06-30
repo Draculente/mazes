@@ -1,4 +1,4 @@
-use std::{cell, fmt::Display};
+use std::fmt::Display;
 
 use image::{DynamicImage, Rgba, RgbaImage};
 use itertools::Itertools;
