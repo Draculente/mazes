@@ -1,9 +1,9 @@
-use std::fmt::Display;
+use std::{cell, fmt::Display};
 
 use image::{DynamicImage, Rgba, RgbaImage};
 use itertools::Itertools;
 
-use crate::maze_generation::{Cell, MazeMap, Wall};
+use crate::maze_generation::{Cell, Color, MazeMap, Wall};
 
 const IMAGE_BORDER_WIDTH: usize = 3;
 const IMAGE_BLOCK_WIDTH: usize = 20;
@@ -17,6 +17,7 @@ enum BlockType {
     Green,
     Yellow,
     Border,
+    Solution,
 }
 
 impl BlockType {
@@ -32,6 +33,7 @@ impl BlockType {
             (255, 255, 0) => BlockType::Yellow,
             (0, 255, 0) => BlockType::Green,
             (0, 0, 255) => BlockType::Blue,
+            (138, 74, 243) => BlockType::Solution,
             _ => BlockType::Border,
         }
     }
@@ -45,6 +47,7 @@ impl BlockType {
             BlockType::Green => [0, 255, 0, 255],
             BlockType::Yellow => [255, 255, 0, 255],
             BlockType::Border => [255, 0, 0, 255],
+            BlockType::Solution => [138, 74, 243, 255],
         }
     }
 
@@ -63,8 +66,20 @@ impl Display for BlockType {
             BlockType::Green => "🟩",
             BlockType::Yellow => "🟨",
             BlockType::Border => "🟥",
+            BlockType::Solution => "🤖",
         };
         f.write_str(s)
+    }
+}
+
+impl From<Color> for BlockType {
+    fn from(value: Color) -> Self {
+        match value {
+            Color::Blue => BlockType::Blue,
+            Color::Orange => BlockType::Orange,
+            Color::Yellow => BlockType::Yellow,
+            Color::Green => BlockType::Green,
+        }
     }
 }
 
@@ -94,6 +109,7 @@ impl Block {
             BlockType::Green => 1,
             BlockType::Yellow => 7,
             BlockType::Border => usize::MAX,
+            BlockType::Solution => usize::MAX,
         }
     }
 }
@@ -104,6 +120,7 @@ impl Display for Block {
     }
 }
 
+#[derive(Debug, Clone)]
 pub struct Map {
     width: usize,
     height: usize,
@@ -161,7 +178,19 @@ impl Map {
             .collect_vec()
     }
 
-    pub fn to_string_with_location(&self, location: Option<Block>, with_numbers: bool) -> String {
+    pub fn enter_solution(&mut self, locations: &Vec<Block>) {
+        self.blocks
+            .iter_mut()
+            .map(|row| {
+                row.iter_mut()
+                    .filter(|block| locations.contains(block))
+                    .map(|block| block.block_type = BlockType::Solution)
+                    .collect_vec()
+            })
+            .collect_vec();
+    }
+
+    pub fn to_string_with_locations(&self, locations: &Vec<Block>, with_numbers: bool) -> String {
         let mut res = "".to_string();
         if with_numbers {
             res += "  ";
@@ -175,11 +204,9 @@ impl Map {
                 res += &format!("{:>2}", i);
             }
             for block in row {
-                if let Some(inserted_block) = location {
-                    if block.x == inserted_block.x && block.y == inserted_block.y {
-                        res += "🤖";
-                        continue;
-                    }
+                let mut block = *block;
+                if let Some(_) = locations.iter().find(|location| **location == block) {
+                    block.block_type = BlockType::Solution;
                 }
                 res += &block.to_string();
             }
@@ -233,7 +260,7 @@ fn expand_block_row(block_row: &Vec<BlockType>) -> Vec<Vec<BlockType>> {
 
 impl Display for Map {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        f.write_str(&self.to_string_with_location(None, true))?;
+        f.write_str(&self.to_string_with_locations(&vec![], true))?;
         Ok(())
     }
 }
@@ -313,7 +340,7 @@ fn get_top_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
         // Top left block is always black
         block_row.push(Block::new(cell.x * 2 + 0, y, BlockType::Black));
         let block_type = if cell.top == Wall::Open {
-            BlockType::Orange
+            BlockType::from(cell.color)
         } else {
             BlockType::Black
         };
@@ -337,23 +364,22 @@ fn get_middle_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
 
     for cell in cell_row {
         let block_type = if cell.left == Wall::Open {
-            BlockType::Orange
+            cell.color.into()
         } else {
             BlockType::Black
         };
 
         block_row.push(Block::new(cell.x * 2 + 0, y, block_type));
 
-        block_row.push(Block::new(cell.x * 2 + 1, y, BlockType::Orange));
+        block_row.push(Block::new(cell.x * 2 + 1, y, cell.color.into()));
     }
 
-    let block_type = if cell_row
+    let last_cell = cell_row
         .last()
-        .expect("The MazeMap must at least have a width of 1")
-        .right
-        == Wall::Open
-    {
-        BlockType::Orange
+        .expect("The MazeMap must at least have a width of 1");
+
+    let block_type = if last_cell.right == Wall::Open {
+        last_cell.color.into()
     } else {
         BlockType::Black
     };

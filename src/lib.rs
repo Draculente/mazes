@@ -3,9 +3,12 @@ mod maze_generation;
 
 use std::cmp::Reverse;
 use std::collections::HashMap;
+use std::fmt::Display;
 use std::sync::Arc;
 
 use anyhow::anyhow;
+use anyhow::Ok;
+use itertools::Itertools;
 pub use map::Block;
 pub use map::Map;
 pub use maze_generation::generate_maze;
@@ -22,7 +25,7 @@ impl State {
     }
 
     pub fn display_on_map(&self, map: &Map) -> String {
-        map.to_string_with_location(Some(self.location), false)
+        map.to_string_with_locations(&vec![self.location], false)
     }
 }
 
@@ -65,11 +68,44 @@ impl Node {
     }
 }
 
-pub fn a_star(
-    map: &Map,
-    start_block: Block,
-    destination_block: Block,
-) -> anyhow::Result<Vec<State>> {
+pub struct Solution {
+    states: Vec<State>,
+    map: Map,
+    cost: u32,
+}
+
+impl Solution {
+    fn new(node: &Node, mut map: Map) -> Self {
+        let states = node.get_steps();
+        let cost = node.cost;
+        map.enter_solution(&states.iter().map(|state| state.location).collect_vec());
+        Self { states, map, cost }
+    }
+
+    pub fn as_sequence_of_maps(&self, map: &Map) -> Vec<String> {
+        self.states
+            .iter()
+            .map(|state| state.display_on_map(map))
+            .collect_vec()
+    }
+
+    pub fn to_solution_map(self) -> Map {
+        self.map
+    }
+}
+
+impl Display for Solution {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        f.write_str(&self.map.to_string_with_locations(&vec![], false))?;
+        f.write_fmt(format_args!(
+            "This solution cost {} and involves {} steps\n",
+            self.cost,
+            self.states.len()
+        ))
+    }
+}
+
+pub fn a_star(map: &Map, start_block: Block, destination_block: Block) -> anyhow::Result<Solution> {
     let first_state = State::new(start_block);
     let first_node = Arc::new(Node::new(first_state, None, 0));
 
@@ -83,7 +119,7 @@ pub fn a_star(
     while !frontier.is_empty() {
         let (node, _) = frontier.pop().ok_or(anyhow!("Frontier is empty"))?;
         if node.state.location == destination_block {
-            return Ok(node.get_steps());
+            return Ok(Solution::new(&node, (*map).clone()));
         }
         for action in map.get_reachable(node.state.location.x, node.state.location.y) {
             let new_state = State::new(action);

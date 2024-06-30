@@ -1,4 +1,9 @@
-use rand::seq::SliceRandom;
+use rand::{
+    distributions::{Distribution, Standard},
+    random,
+    seq::SliceRandom,
+    Rng,
+};
 
 use anyhow::{anyhow, Ok};
 
@@ -6,6 +11,25 @@ use anyhow::{anyhow, Ok};
 pub enum Wall {
     Open,
     Closed,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum Color {
+    Blue,
+    Orange,
+    Yellow,
+    Green,
+}
+
+impl Distribution<Color> for Standard {
+    fn sample<R: rand::Rng + ?Sized>(&self, rng: &mut R) -> Color {
+        match rng.gen_range(0..4) {
+            0 => Color::Blue,
+            1 => Color::Orange,
+            2 => Color::Yellow,
+            _ => Color::Green,
+        }
+    }
 }
 
 #[derive(Debug, Clone, Copy)]
@@ -16,6 +40,7 @@ pub struct Cell {
     pub left: Wall,
     pub x: usize,
     pub y: usize,
+    pub color: Color,
 }
 
 impl Cell {
@@ -27,7 +52,12 @@ impl Cell {
             left: Wall::Closed,
             x,
             y,
+            color: rand::random(),
         }
+    }
+
+    fn set_color(&mut self, color: Color) {
+        self.color = color
     }
 
     /// The relation of the other cell to self (e.g. Relation::Top means, that other is on top of self)
@@ -148,19 +178,25 @@ impl MazeMap {
 }
 
 /// https://en.wikipedia.org/wiki/Maze_generation_algorithm#Iterative_implementation_(with_stack)
-pub fn generate_maze(width: usize, height: usize) -> anyhow::Result<MazeMap> {
+pub fn generate_maze(
+    width: usize,
+    height: usize,
+    loop_prob: Option<f64>,
+) -> anyhow::Result<MazeMap> {
     let mut map = MazeMap::new(width, height);
-    let mut stack = vec![map
+    let first_cell = map
         .get_cell(0, 0)
-        .ok_or(anyhow!("The maze must at least have the dimensions 1x1"))?
-        .clone()];
-    let mut visited = vec![];
+        .ok_or(anyhow!("The maze must at least have the dimensions 1x1"))?;
+    let mut stack = vec![first_cell.clone()];
+    let mut visited = vec![first_cell.clone()];
+    let mut color: Color = rand::random();
+    let mut rng = rand::thread_rng();
 
     while let Some(current_cell) = stack.pop() {
         let unvisited_neighbors: Vec<Cell> = map
             .get_neighbors(&current_cell)
             .into_iter()
-            .filter(|cell| !visited.contains(cell))
+            .filter(|cell| !visited.contains(cell) || rng.gen_bool(loop_prob.unwrap_or(0.0)))
             .collect();
 
         if !unvisited_neighbors.is_empty() {
@@ -169,8 +205,12 @@ pub fn generate_maze(width: usize, height: usize) -> anyhow::Result<MazeMap> {
                 .choose(&mut rand::thread_rng())
                 .expect("The get_neighbors can't be empty");
             map.connect_cells(&current_cell, &chosen_cell)?;
+            map.get_cell_mut(current_cell.x, current_cell.y)
+                .map(|cell| cell.set_color(color));
             visited.push(chosen_cell.clone());
             stack.push(chosen_cell.clone());
+        } else {
+            color = rand::random();
         }
     }
 
