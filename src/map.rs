@@ -2,6 +2,8 @@ use std::fmt::Display;
 
 use image::{DynamicImage, Rgba, RgbaImage};
 use itertools::Itertools;
+#[cfg(debug_assertions)]
+use std::time::Instant;
 
 use crate::maze_generation::{Cell, Color, MazeMap, Wall};
 
@@ -216,6 +218,8 @@ impl Map {
     }
 
     pub fn to_image(self) -> Option<RgbaImage> {
+        #[cfg(debug_assertions)]
+        let now = Instant::now();
         let image_width: u32 = self.width as u32 * IMAGE_BLOCK_WIDTH as u32
             + (self.width as u32 - 1) * IMAGE_BORDER_WIDTH as u32;
         let image_height: u32 = self.height as u32 * IMAGE_BLOCK_WIDTH as u32
@@ -233,7 +237,10 @@ impl Map {
             .flatten()
             .map(|block_type| block_type.to_rgba())
             .flatten()
-            .collect_vec();
+            .collect();
+
+        #[cfg(debug_assertions)]
+        println!("Image generation took {:.2?}", now.elapsed());
 
         RgbaImage::from_vec(image_width, image_height, buffer_vec)
     }

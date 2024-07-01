@@ -127,9 +127,12 @@ fn gen(args: &GenArgs) -> anyhow::Result<()> {
         prompt_opt("Enter the path where to save the map as png")?
     };
 
-    map.to_image()
-        .ok_or(anyhow!("Failed to create image"))?
-        .save(path.ok_or(anyhow!("No path specified. Discarding the image"))?)?;
+    println!("Generating the image...");
+
+    let image = map.to_image().ok_or(anyhow!("Failed to create image"))?;
+
+    println!("Saving the image...");
+    image.save(path.ok_or(anyhow!("No path specified. Discarding the image"))?)?;
 
     Ok(())
 }
