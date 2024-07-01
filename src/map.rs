@@ -281,8 +281,8 @@ impl From<DynamicImage> for Map {
 
         // Every pixel row of a chunk belongs to the same block.
         let row_chunks = rgba8_img
-            .enumerate_rows_mut()
-            .map(|(_, row)| row.map(|(_, _, rgba)| rgba).collect_vec())
+            .rows()
+            .map(|row| row.map(BlockType::from_rgba).collect_vec())
             .chunk_by(is_border_row);
 
         let blocks = row_chunks
@@ -371,7 +371,7 @@ fn get_middle_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
 
     for cell in cell_row {
         let block_type = if cell.left == Wall::Open {
-            cell.color.into()
+            BlockType::from(cell.color)
         } else {
             BlockType::Black
         };
@@ -396,16 +396,13 @@ fn get_middle_block_row_of_cell_row(cell_row: &Vec<Cell>) -> Vec<Block> {
     block_row
 }
 
-fn is_border_row(row: &Vec<&mut Rgba<u8>>) -> bool {
-    // row.all(|&p| BlockType::from_rgba(&p).is_border())
-    row.iter()
-        .map(|rgba| BlockType::from_rgba(rgba))
-        .all(|block| block.is_border())
+fn is_border_row(row: &Vec<BlockType>) -> bool {
+    row.iter().all(|block| block.is_border())
 }
 
-fn get_blocks_from_pixel_row(block_row_y: usize, pixel_row: &Vec<&mut Rgba<u8>>) -> Vec<Block> {
+fn get_blocks_from_pixel_row(block_row_y: usize, pixel_row: &Vec<BlockType>) -> Vec<Block> {
     pixel_row
-        .split(|rgba| BlockType::from_rgba(rgba).is_border())
+        .split(|block| block.is_border())
         .filter(|pixel_block| pixel_block.len() > 2)
         .map(|pixel_block| {
             // Get the third pixel of the block to get pure color (on the edges of each block are blurred colors due to compression)
@@ -414,6 +411,6 @@ fn get_blocks_from_pixel_row(block_row_y: usize, pixel_row: &Vec<&mut Rgba<u8>>)
                 .expect("Each block must have at least a width of 3 pixels")
         })
         .enumerate()
-        .map(|(block_x, rgba)| Block::new(block_x, block_row_y, BlockType::from_rgba(rgba)))
+        .map(|(block_x, block_type)| Block::new(block_x, block_row_y, *block_type))
         .collect_vec()
 }
